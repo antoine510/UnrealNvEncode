@@ -2,8 +2,6 @@
 #include "NvEncodePlugin.h"
 #include <Engine.h>
 
-#include <Runtime/RHI/Public/RHICommandList.h>
-
 FLogCategoryNvEncodeLog NvEncodeLog;
 
 void NvEncode::LogMessage(const FString& msg) {
@@ -27,22 +25,42 @@ void NvEncode::LogMessageOnScreen(const char* msg) {
 
 UNvEncoder::UNvEncoder(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {}
 
-bool UNvEncoder::InitializeEncoder(int width, int height, int bitrate) {
-	if(GDynamicRHI->GetName() != FString(L"D3D11")) {
-		NvEncode::LogMessageOnScreen(L"NvEncoder only supports D3D11");
+bool UNvEncoder::CreateEncoder(int width, int height, int bitrate, UNvEncoder*& encoder) {
+	if(width < 128 || width > 4096 || (width & (width - 1)) != 0) {
+		NvEncode::LogMessageOnScreen(FString(L"Invalid encoder width: ") + FString::FromInt(width));
+		return false;
+	}
+	if(height < 128 || height > 4096 || (height & (height - 1)) != 0) {
+		NvEncode::LogMessageOnScreen(FString(L"Invalid encoder height: ") + FString::FromInt(height));
 		return false;
 	}
 
-	_encoder = new NvEncoderCustom(width, height);
-	if(!_encoder) {
-		NvEncode::LogMessageOnScreen(L"NvEncoderD3D11 creation error");
+	/*if(GDynamicRHI->GetName() != FString(L"D3D11")) {
+		NvEncode::LogMessageOnScreen(L"NvEncoder only supports D3D11");
+		return false;
+	}*/
+	encoder = NewObject<UNvEncoder>();
+	encoder->width = width;
+	encoder->height = height;
+
+	CUdevice encodeDevice = 0;
+	cuInit(0);
+	cuDeviceGet(&encodeDevice, 0);
+	cuCtxCreate(&encoder->_context, 0, encodeDevice);
+	try {
+		encoder->_encoder = new NvEncoderCuda(encoder->_context, width, height, NV_ENC_BUFFER_FORMAT_NV12, 0);
+	} catch(NVENCException& e) {
+		NvEncode::LogMessageOnScreen(("NvEncoderD3D11 creation error: " + e.getErrorString()).c_str());
 		return false;
 	}
+
+	encoder->_inBuffer = (uint8_t*)calloc(1, encoder->_encoder->GetFrameSize());
+
 
 	NV_ENC_INITIALIZE_PARAMS initParams = {NV_ENC_INITIALIZE_PARAMS_VER};
 	NV_ENC_CONFIG encodeConfig = {NV_ENC_CONFIG_VER};
 	initParams.encodeConfig = &encodeConfig;
-	_encoder->CreateDefaultEncoderParams(&initParams, NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_LOW_LATENCY_DEFAULT_GUID);
+	encoder->_encoder->CreateDefaultEncoderParams(&initParams, NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_LOW_LATENCY_DEFAULT_GUID);
 
 	encodeConfig.gopLength = NVENC_INFINITE_GOPLENGTH;
 	encodeConfig.frameIntervalP = 1;
@@ -54,44 +72,110 @@ bool UNvEncoder::InitializeEncoder(int width, int height, int bitrate) {
 	encodeConfig.rcParams.maxBitRate = encodeConfig.rcParams.averageBitRate;
 	encodeConfig.rcParams.vbvInitialDelay = encodeConfig.rcParams.vbvBufferSize;
 
-	_encoder->CreateEncoder(&initParams);
+	encoder->_encoder->CreateEncoder(&initParams);
+
+	/*ENQUEUE_RENDER_COMMAND(CreateEncoderRC)([&enc = encoder->_encoder, width, height, bitrate](FRHICommandListImmediate& RHICmdList) {
+
+		NV_ENC_INITIALIZE_PARAMS initParams = {NV_ENC_INITIALIZE_PARAMS_VER};
+		NV_ENC_CONFIG encodeConfig = {NV_ENC_CONFIG_VER};
+		initParams.encodeConfig = &encodeConfig;
+		enc->CreateDefaultEncoderParams(&initParams, NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_LOW_LATENCY_DEFAULT_GUID);
+
+		encodeConfig.gopLength = NVENC_INFINITE_GOPLENGTH;
+		encodeConfig.frameIntervalP = 1;
+		encodeConfig.encodeCodecConfig.h264Config.idrPeriod = NVENC_INFINITE_GOPLENGTH;
+		encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+
+		encodeConfig.rcParams.averageBitRate = bitrate;
+		encodeConfig.rcParams.vbvBufferSize = (encodeConfig.rcParams.averageBitRate * initParams.frameRateDen / initParams.frameRateNum) * 5;
+		encodeConfig.rcParams.maxBitRate = encodeConfig.rcParams.averageBitRate;
+		encodeConfig.rcParams.vbvInitialDelay = encodeConfig.rcParams.vbvBufferSize;
+
+		enc->CreateEncoder(&initParams);
+	});*/
 
 	return true;
 }
 
-/*void UNvEncoder::CreateInputTexture() {
-
-}*/
-
-void UNvEncoder::SetInputTexture(UTexture2D* input) {
-	_encoder->SetInputTexture((ID3D11Texture2D*)(((FTexture2DResource*)input->Resource)->GetTexture2DRHI().GetReference()));
+bool UNvEncoder::SetInputTexture(UTexture2D* input) {
+	if(input->GetSizeX() != width || input->GetSizeY() != height) {
+		NvEncode::LogMessageOnScreen(L"Invalid input texture dimensions");
+		return false;
+	}
+	/*ENQUEUE_RENDER_COMMAND(SetInputTextureRC)([this, input](FRHICommandListImmediate& RHICmdList) {
+		_input = ((FTexture2DResource*)input->Resource)->GetTexture2DRHI();
+	});*/
+	return true;
 }
 
-void UNvEncoder::SetInputRenderTarget(UTextureRenderTarget2D* input) {
-	_encoder->SetInputTexture((ID3D11Texture2D*)(((FTextureRenderTarget2DResource*)input->GetRenderTargetResource())->GetTextureRHI().GetReference()));
+bool UNvEncoder::SetInputRenderTarget(UTextureRenderTarget2D* input) {
+	if(input->SizeX != width || input->SizeY != height) {
+		NvEncode::LogMessageOnScreen(L"Invalid input render target dimensions");
+		return false;
+	}
+	_input = input;
+	/*ENQUEUE_RENDER_COMMAND(SetInputRenderTargetRC)([this, input](FRHICommandListImmediate& RHICmdList) {
+		_input = ((FTextureRenderTarget2DResource*)input->GetRenderTargetResource())->GetTextureRHI();
+	});*/
+	return true;
 }
 
-void UNvEncoder::EncodeFrame(int64& result, int& size) {
+bool UNvEncoder::EncodeFrame(const FEncodeFinishedDelegate& encodeDone) {
+	auto* enc = _encoder;//_encoder.load(std::memory_order_acquire);
+	if(enc == nullptr) return false;
+
+	_delegate = encodeDone;
 
 	// Copy texture to local and encode frame
-	NV_ENC_PIC_PARAMS picParams = {NV_ENC_PIC_PARAMS_VER};
-	picParams.encodePicFlags = 0;
+	ENQUEUE_RENDER_COMMAND(EncodeFrameRC)([this, enc](FRHICommandListImmediate& RHICmdList) {
+		auto _in = ((FTextureRenderTarget2DResource*)_input->GetRenderTargetResource())->GetTextureRHI();
+		uint32 Stride = 0;
+		uint8_t* TexData = (uint8_t*)RHICmdList.LockTexture2D(_in, 0, RLM_ReadOnly, Stride, false, false);
+		//NV12 expected but R8 source, have to pad
+		memcpy(_inBuffer, TexData, width * height);
+		RHICmdList.UnlockTexture2D(_in, 0, false, false);
 
-	_vPackets.clear();
-	_encoder->EncodeFrame(_vPackets, &picParams);
+		NV_ENC_PIC_PARAMS picParams = {NV_ENC_PIC_PARAMS_VER};
+		picParams.encodePicFlags = 0;
 
-	if(_vPackets.size() != 1) {
-		result = 0;
-		size = 0;
-	} else {
-		result = reinterpret_cast<int64>(_vPackets[0].data());
-		size = static_cast<int>(_vPackets[0].size());
-	}
+		_vPackets.clear();
+
+		const NvEncInputFrame* encInput = enc->GetNextInputFrame();
+		enc->CopyToDeviceFrame(_context, (void*)_inBuffer,
+							   0,
+							   (CUdeviceptr)encInput->inputPtr,
+							   encInput->pitch,
+							   enc->GetEncodeWidth(),
+							   enc->GetEncodeHeight(),
+							   CU_MEMORYTYPE_HOST,
+							   encInput->bufferFormat,
+							   encInput->chromaOffsets,
+							   encInput->numChromaPlanes);
+		enc->EncodeFrame(_vPackets, &picParams);
+
+		if(_vPackets.size() != 1) {
+			NvEncode::LogMessage(L"ERROR: Encoded " + FString::FromInt(_vPackets.size()) + L" packets!");
+		} else {
+			_encodedData.store((void*)_vPackets[0].data(), std::memory_order_relaxed);
+			_encodedSize.store(static_cast<int>(_vPackets[0].size()), std::memory_order_release);
+		}
+	});
+
+	return true;
 }
 
 void UNvEncoder::DestroyEncoder() {
-	if(_encoder != nullptr) _encoder->EndEncode(_vPackets);
+	if(_encoder != nullptr) {
+		_encoder->EndEncode(_vPackets);
+	}
 
 	delete _encoder;
 	_encoder = nullptr;
+
+	if(_context != nullptr) {
+		if(cuCtxDestroy(_context) != CUDA_SUCCESS) {
+			NvEncode::LogMessage(L"Could not destroy CUDA context");
+		}
+		_context = nullptr;
+	}
 }

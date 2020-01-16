@@ -11,23 +11,19 @@
 
 #pragma once
 
-#include <vector>
-#include <stdint.h>
-#include <mutex>
-#include <unordered_map>
-
-#include "AllowWindowsPlatformTypes.h"
-#include <d3d11.h>
-#include "HideWindowsPlatformTypes.h"
+#include <Runtime/RHI/Public/RHIResources.h>
+#include <Runtime/RHI/Public/RHICommandList.h>
+#include <cuda.h>
 
 #include "NvEncoder.h"
 
 class NvEncoderCustom : public NvEncoder {
 public:
-	NvEncoderCustom(uint32_t nWidth, uint32_t nHeight);
+	NvEncoderCustom(FRHICommandListImmediate& cmdList, uint32_t nWidth, uint32_t nHeight);
 	virtual ~NvEncoderCustom();
 
-	void SetInputTexture(ID3D11Texture2D* texture);
+	void SetInputTexture(FTexture2DRHIRef texture);
+	void CopyInputToEncoder(FRHICommandListImmediate& RHICmdList);
 
 private:
 	/**
@@ -43,12 +39,21 @@ private:
 	*  This function is an override of virtual function NvEncoder::ReleaseInputBuffers().
 	*/
 	virtual void ReleaseInputBuffers() override;
-private:
+
 	/**
-	*  @brief This is a private function to release ID3D11Texture2D textures used for encoding.
+	*  @brief This is a private function to release textures used for encoding.
 	*/
-	void ReleaseD3D11Resources();
+	void ReleaseResources();
+
+	CUcontext CreateCUDAContext();
+
 private:
-	ID3D11Texture2D* _inputTexture = nullptr;
-	uint32_t _texWidth, _texHeight;
+	FTexture2DRHIRef _inputTexture;
+	FTexture2DRHIRef _nvencTexture;
+
+	FRHICommandListImmediate& _cmdList;
+	CUcontext _context;
+
+public:
+	uint32_t Width, Height;
 };

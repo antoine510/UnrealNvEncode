@@ -19,8 +19,10 @@ public class NvEncode : ModuleRules {
 		}
 
 		PrivateIncludePaths.Add(Path.Combine(NvEncodePath, "include/"));
+		PrivateIncludePaths.Add(Path.Combine(NvEncodePath, "include/CUDA/"));
 		
 		PublicLibraryPaths.Add(Path.Combine(NvEncodePath, "lib/Win64/"));
+		PublicAdditionalLibraries.AddRange(new string[] {"cuda.lib", "cudart.lib"});
 		
 		bEnableExceptions = true;
 	}

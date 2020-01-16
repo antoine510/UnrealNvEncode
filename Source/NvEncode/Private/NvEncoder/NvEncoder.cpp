@@ -533,7 +533,18 @@ void NvEncoder::RegisterResources(std::vector<void*> inputframes, NV_ENC_INPUT_R
         registerResource.height = height;
         registerResource.pitch = pitch;
         registerResource.bufferFormat = bufferFormat;
-        NVENC_API_CALL(m_nvenc.nvEncRegisterResource(m_hEncoder, &registerResource));
+
+		/***/
+		NVENCSTATUS errorCode = m_nvenc.nvEncRegisterResource(m_hEncoder, &registerResource);
+		if(errorCode != NV_ENC_SUCCESS)
+		{
+			std::ostringstream errorLog;
+			errorLog << "nvEncRegisterResource returned error " << errorCode;
+			throw NVENCException::makeNVENCException(errorLog.str(), errorCode, __FUNCTION__, __FILE__, __LINE__);
+		}
+		/***/
+
+        //NVENC_API_CALL(m_nvenc.nvEncRegisterResource(m_hEncoder, &registerResource));
 
         std::vector<uint32_t> _chromaOffsets;
         NvEncoder::GetChromaSubPlaneOffsets(bufferFormat, pitch, height, _chromaOffsets);
