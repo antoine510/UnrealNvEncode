@@ -11,8 +11,8 @@
 
 #pragma once
 
-#include <Runtime/RHI/Public/RHIResources.h>
-#include <Runtime/RHI/Public/RHICommandList.h>
+#include <RHIResources.h>
+#include <RHICommandList.h>
 #include <cuda.h>
 
 #include "NvEncoder.h"

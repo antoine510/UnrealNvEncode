@@ -1,0 +1,6 @@
+title: My Template
+description: Stream video to someone
+backgroundImage: SBG/Icons/gpuBanner.png
+constraints:
+- componentPath: SBG/VideoSource
+  versionConstraint: "^1.0"

@@ -1,0 +1,19 @@
+title: Video source
+version: "1.0.0"
+description: This component is used to stream low latency video
+iconImage: SBG/Icons/h264.png
+backgroundImage: SBG/Icons/gpuBanner.png
+topics:
+- name: frameSlotReady
+  comet: FrameSlotReady
+  in: true
+- name: videoFrame
+  comet: VideoFrame
+  out: true
+paramSpecs:
+- name: CaptureWidth
+  description: The capture width
+  int: {min: 512, max: 4096}
+- name: CaptureHeight
+  description: The capture height
+  int: {min: 512, max: 4096}

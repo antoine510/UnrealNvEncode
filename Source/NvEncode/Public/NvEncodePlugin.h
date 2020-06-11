@@ -7,8 +7,8 @@
 #include <vector>
 #include <atomic>
 
-#include "Kismet/BlueprintFunctionLibrary.h"
-#include "Tickable.h"
+#include <Tickable.h>
+#include "BP/USBGCommonBP.h"
 
 #include "NvEncodePlugin.generated.h"
 
@@ -22,11 +22,6 @@ void NVENCODE_API LogMessage(const FString& msg);
 void NVENCODE_API LogMessageOnScreen(const FString& msg);
 void NVENCODE_API LogMessage(const char* msg);
 void NVENCODE_API LogMessageOnScreen(const char* msg);
-
-template <typename T>
-bool IsValidT(const T* Test) {
-	return ::IsValid(Test) && Test->IsValid();
-}
 
 }
 
@@ -76,7 +71,7 @@ public:
 	* @return	Return true if the object is usable
 	*/
 	UFUNCTION(BlueprintPure, Meta = (CompactNodeTitle = "IsValid"))
-		static bool IsValid(const UNvEncoder* Test) { return NvEncode::IsValidT(Test); }
+		static bool IsValid(const UNvEncoder* Test) { return IsValidT(Test); }
 
 protected:
 	//void CreateInputTexture();

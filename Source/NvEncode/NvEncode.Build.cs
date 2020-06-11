@@ -11,8 +11,7 @@ public class NvEncode : ModuleRules {
 	public NvEncode(ReadOnlyTargetRules Target) : base(Target) {
 		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
 		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "RHI", "RenderCore"});
-		PrivatePCHHeaderFile = "Private/NvEncodePCH.h";
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "RHI", "RenderCore", "SBGUnrealAdapter" });
 
 		if (Target.Platform != UnrealTargetPlatform.Win64) {
 			throw new System.Exception("This plugin is only available for Win64 right now.");
@@ -21,10 +20,14 @@ public class NvEncode : ModuleRules {
 		PrivateIncludePaths.Add(Path.Combine(NvEncodePath, "include/"));
 		PrivateIncludePaths.Add(Path.Combine(NvEncodePath, "include/CUDA/"));
 		
-		PublicLibraryPaths.Add(Path.Combine(NvEncodePath, "lib/Win64/"));
-		PublicAdditionalLibraries.AddRange(new string[] {"cuda.lib", "cudart.lib"});
+		addLibrary("Win64", "cuda.lib");
+		addLibrary("Win64", "cudart.lib");
 		
 		bEnableExceptions = true;
+	}
+	
+	private void addLibrary(string arch, string lib) {
+		PublicAdditionalLibraries.Add(Path.Combine(NvEncodePath, "lib/", arch, lib));
 	}
 	
 	private void addDependency(string arch, string lib) {

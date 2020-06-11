@@ -1,7 +1,5 @@
-#include "NvEncodePCH.h"
 #include "NvEncode.h"
-#include "Core.h"
-#include "ModuleManager.h"
+#include <Modules/ModuleManager.h>
 
 bool NvEncodeModule::initialized = false;
 

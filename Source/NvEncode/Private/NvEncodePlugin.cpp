@@ -1,6 +1,5 @@
-#include "NvEncodePCH.h"
 #include "NvEncodePlugin.h"
-#include <Engine.h>
+#include <Engine/Engine.h>
 
 FLogCategoryNvEncodeLog NvEncodeLog;
 

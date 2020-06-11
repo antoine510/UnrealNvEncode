@@ -10,13 +10,11 @@
 */
 
 #include "NvEncoder/NvEncoderCustom.h"
-#include <Runtime/Core/Public/PixelFormat.h>
-#include <Runtime/RHI/Public/RHIDefinitions.h>
-#include <Runtime/RHI/Public/RHI.h>
+#include <RHI.h>
 
-#include "AllowWindowsPlatformTypes.h"
+#include "Windows/AllowWindowsPlatformTypes.h"
 #include <d3d11.h>
-#include "HideWindowsPlatformTypes.h"
+#include "Windows/HideWindowsPlatformTypes.h"
 
 #include <cudaD3D11.h>
 #include <vector>

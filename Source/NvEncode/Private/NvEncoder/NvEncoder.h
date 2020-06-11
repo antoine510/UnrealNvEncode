@@ -12,9 +12,9 @@
 #pragma once
 
 #include <vector>
-#include "AllowWindowsPlatformTypes.h"
+#include "Windows/AllowWindowsPlatformTypes.h"
 #include "NvCodec/nvEncodeAPI.h"
-#include "HideWindowsPlatformTypes.h"
+#include "Windows/HideWindowsPlatformTypes.h"
 #include <stdint.h>
 #include <mutex>
 #include <string>
