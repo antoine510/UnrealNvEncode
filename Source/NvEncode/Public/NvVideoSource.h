@@ -5,6 +5,13 @@
 #include <Camera/PlayerCameraManager.h>
 #include "NvVideoSource.generated.h"
 
+UENUM(BlueprintType)
+enum class ECameraMatchFOV : uint8 {
+	None		UMETA(DisplayName = "No matching"),
+	MatchFOV	UMETA(DisplayName = "Match FOV"),
+	Auto		UMETA(DisplayName = "Auto-detect"),
+};
+
 UCLASS(Blueprintable, BlueprintType, ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class NVENCODE_API UNvVideoSource : public USceneCaptureComponent2D {
 	GENERATED_UCLASS_BODY()
@@ -22,12 +29,13 @@ public:
 		bool bStartAsDefaultSource = true;
 
 	UPROPERTY(EditAnywhere)
-		bool bMatchCameraFOV = false;
+		ECameraMatchFOV matchCameraFOV = ECameraMatchFOV::Auto;
 
 private:
 	float GetViewportAspectRatio();
 	mutable FViewport* _viewportCache;
 
+	bool _bMatchFOV = false;
 	APlayerCameraManager* _cameraManager = nullptr;
 
 	float _currentHFOV = -1.0f;

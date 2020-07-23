@@ -4,6 +4,7 @@
 #include <Engine/Engine.h>
 #include <Engine/World.h>
 #include <GameFramework/GameModeBase.h>
+#include <Camera/CameraComponent.h>
 #include <Engine/GameViewportClient.h>
 
 UNvVideoSource::UNvVideoSource(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {
@@ -16,7 +17,21 @@ UNvVideoSource::UNvVideoSource(const FObjectInitializer& ObjectInitializer) : Su
 
 void UNvVideoSource::BeginPlay() {
 	Super::BeginPlay();
-	if(bMatchCameraFOV && GetWorld()->GetFirstPlayerController()) {
+
+	if(matchCameraFOV == ECameraMatchFOV::Auto) {	// Look for a camera in parents
+		TArray<USceneComponent*> parents;
+		GetParentComponents(parents);
+		for(const auto parent : parents) {
+			if(parent->IsA<UCameraComponent>()) {
+				_bMatchFOV = true;
+				break;
+			}
+		}
+	} else if(matchCameraFOV == ECameraMatchFOV::MatchFOV) {
+		_bMatchFOV = true;
+	}
+
+	if(_bMatchFOV && GetWorld()->GetFirstPlayerController()) {
 		_cameraManager = GetWorld()->GetFirstPlayerController()->PlayerCameraManager;
 		check(GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport);
 		_viewportCache = GEngine->GameViewport->Viewport;
@@ -38,7 +53,7 @@ void UNvVideoSource::SetAsCurrentSource() {
 
 void UNvVideoSource::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if(!bMatchCameraFOV || !_cameraManager) return;
+	if(!_bMatchFOV || !_cameraManager) return;
 	float HalfFOV = _cameraManager->GetFOVAngle() * 0.5f;
 	FOVAngle = FMath::RadiansToDegrees(FMath::Atan(FMath::Tan(FMath::DegreesToRadians(HalfFOV)) / GetViewportAspectRatio())) * 2.f;
 }
