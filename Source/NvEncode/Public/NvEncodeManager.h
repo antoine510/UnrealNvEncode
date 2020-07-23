@@ -44,10 +44,13 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		UNvVideoSource* VideoSource = nullptr;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 		float MaximumFrameRate = 30.f;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+	UPROPERTY(BlueprintReadOnly)
+		float CurrentFrameRate;
+
+	UPROPERTY(BlueprintReadOnly)
 		int ReadyFrameSlots;
 
 private:
@@ -67,6 +70,7 @@ private:
 	FTimerHandle _sendFrameTimer;
 	FTimerHandle _averageRateTimer;
 
+	// Average cycle time processing variables
 	static constexpr uint32 _processTimeBufferSize = 16u;
 	TCircularBuffer<uint64> _processTimeBuffer{_processTimeBufferSize};
 	uint32 _processTimeIndex = 0;

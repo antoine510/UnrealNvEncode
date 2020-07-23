@@ -101,16 +101,17 @@ void UNvEncodeManager::updateAverageFrameRate() {
 	checkf(world != nullptr, L"No world!!");
 	auto& tm = world->GetTimerManager();
 
-	float cycleTime = 1.f / MaximumFrameRate;	// Default is as fast as possible
+	float cycleTimeMillis = 1000.f / MaximumFrameRate;	// Default is as fast as possible
 	float remaining = tm.GetTimerRemaining(_sendFrameTimer);
 	if(_processTimeBufferValid) {	// We can smooth the cycle time to spread out frames evenly
 		auto oldestTime = _processTimeBuffer[_processTimeIndex];	// Index is one-past-current so oldest is @ index
 		auto newestTime = _processTimeBuffer[_processTimeBuffer.GetPreviousIndex(_processTimeIndex)];	// Newest is previous value in buffer
 
-		float avgMillisPerCycle = (float)(newestTime - oldestTime) / (_processTimeBufferSize - 1) / 1000.f;	// Intervals = Timepoints - 1
-		if(avgMillisPerCycle > cycleTime) cycleTime = avgMillisPerCycle;
+		// Bias avgMillisPerCycle down 5ms to get back to higher framerate gradually if possible
+		float avgMillisPerCycle = (float)(newestTime - oldestTime) / (_processTimeBufferSize - 1) - 5.f;	// Intervals = Timepoints - 1
+		if(avgMillisPerCycle > cycleTimeMillis) cycleTimeMillis = avgMillisPerCycle;
 	}
 
-	tm.SetTimer(_sendFrameTimer, this, &UNvEncodeManager::SendFrame, cycleTime, true, remaining);
-	NvEncode::LogMessageOnScreen(L"Average frame rate: " + FString::FromInt(1.f / cycleTime));
+	tm.SetTimer(_sendFrameTimer, this, &UNvEncodeManager::SendFrame, cycleTimeMillis / 1000.f, true, remaining);
+	CurrentFrameRate = 1000.f / cycleTimeMillis;
 }
