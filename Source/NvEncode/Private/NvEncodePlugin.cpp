@@ -1,6 +1,5 @@
 #include "NvEncodePlugin.h"
 #include <Engine/Engine.h>
-#include <Engine/TextureRenderTarget2D.h>
 #include <Engine/Texture2D.h>
 
 FLogCategoryNvEncodeLog NvEncodeLog;
@@ -24,7 +23,8 @@ void NvEncode::LogMessageOnScreen(const char* msg) {
 }
 
 
-NvEncoderUnreal::NvEncoderUnreal(int width_, int height_, int bitrate_) : width(width_), height(height_) {
+NvEncoderUnreal::NvEncoderUnreal(int width_, int height_, int bitrate_, ETextureRenderTargetFormat format) :
+	width(width_), height(height_) {
 	if(width < 128 || width > 4096 || (width & (width - 1)) != 0) {
 		NvEncode::LogMessageOnScreen(FString(L"Invalid encoder width: ") + FString::FromInt(width));
 		return;
@@ -33,13 +33,26 @@ NvEncoderUnreal::NvEncoderUnreal(int width_, int height_, int bitrate_) : width(
 		NvEncode::LogMessageOnScreen(FString(L"Invalid encoder height: ") + FString::FromInt(height));
 		return;
 	}
+	switch(format) {
+	case RTF_R8:
+		_format = NV_ENC_BUFFER_FORMAT_NV12;
+		break;
+	case RTF_RGBA8:
+		/* Fallthrough */
+	case RTF_RGBA8_SRGB:
+		_format = NV_ENC_BUFFER_FORMAT_ARGB;
+		break;
+	default:
+		NvEncode::LogMessageOnScreen(L"Unsupported encoder format: " + UEnum::GetValueAsString(format));
+		return;
+	}
 
 	CUdevice encodeDevice = 0;
 	cuInit(0);
 	cuDeviceGet(&encodeDevice, 0);
 	cuCtxCreate(&_context, 0, encodeDevice);
 	try {
-		_encoder = new NvEncoderCuda(_context, width, height, NV_ENC_BUFFER_FORMAT_NV12, 0);
+		_encoder = new NvEncoderCuda(_context, width, height, _format, 0);
 	} catch(NVENCException& e) {
 		NvEncode::LogMessageOnScreen(("NvEncoderD3D11 creation error: " + e.getErrorString()).c_str());
 		return;
@@ -108,7 +121,7 @@ void NvEncoderUnreal::EncodeFrame() {
 		uint32 Stride = 0;
 		uint8_t* TexData = (uint8_t*)RHICmdList.LockTexture2D(_in, 0, RLM_ReadOnly, Stride, false, false);
 		//NV12 expected but R8 source, have to pad
-		memcpy(_inBuffer, TexData, width * height);
+		memcpy(_inBuffer, TexData, Stride * height);
 		RHICmdList.UnlockTexture2D(_in, 0, false, false);
 
 		NV_ENC_PIC_PARAMS picParams = {NV_ENC_PIC_PARAMS_VER};

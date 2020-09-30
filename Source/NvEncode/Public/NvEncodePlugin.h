@@ -7,6 +7,8 @@
 #include <vector>
 #include <atomic>
 
+#include <Engine/TextureRenderTarget2D.h>
+
 #include "BP/USBGCommonBP.h"
 
 
@@ -26,7 +28,7 @@ void NVENCODE_API LogMessageOnScreen(const char* msg);
 class NVENCODE_API NvEncoderUnreal {
 public:
 
-	NvEncoderUnreal(int width, int height, int bitrate);
+	NvEncoderUnreal(int width, int height, int bitrate, ETextureRenderTargetFormat format);
 	~NvEncoderUnreal();
 
 
@@ -42,6 +44,7 @@ protected:
 	//void CreateInputTexture();
 	CUcontext _context{nullptr};
 	int width, height;
+	NV_ENC_BUFFER_FORMAT _format;
 
 	//UTexture2D* _inputTexture;
 	NvEncoderCuda* _encoder{nullptr};

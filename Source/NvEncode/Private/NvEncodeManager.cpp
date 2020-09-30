@@ -1,5 +1,4 @@
 #include "NvEncodeManager.h"
-#include <Engine/TextureRenderTarget2D.h>
 #include <Engine/World.h>
 #include <TimerManager.h>
 #include <chrono>
@@ -40,7 +39,7 @@ void UNvEncodeManager::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-void UNvEncodeManager::Startup(int width, int height) {
+void UNvEncodeManager::Startup(int width, int height, ETextureRenderTargetFormat format) {
 	USBGCometBP::LoadComet(VideoFrameCometPath, _videoFrameComet);
 	_videoFrameComet->Get("Frame", _videoFrameElt);
 	USBGTopicBP::FCometReceivedDelegate OnFrameSlotReadyReceived;
@@ -52,7 +51,7 @@ void UNvEncodeManager::Startup(int width, int height) {
 
 	_renderTarget = NewObject<UTextureRenderTarget2D>();
 	check(_renderTarget);
-	_renderTarget->RenderTargetFormat = RTF_R8;
+	_renderTarget->RenderTargetFormat = format;
 	_renderTarget->ClearColor = FLinearColor(0.f, 0.f, 0.f);
 	_renderTarget->bAutoGenerateMips = false;
 	_renderTarget->InitAutoFormat(width, height);
@@ -60,7 +59,7 @@ void UNvEncodeManager::Startup(int width, int height) {
 
 	if(VideoSource) VideoSource->TextureTarget = _renderTarget;
 
-	_encoder = new NvEncoderUnreal(width, height, width * height * 2);
+	_encoder = new NvEncoderUnreal(width, height, width * height * 2, format);
 	_encoder->SetInputRenderTarget(_renderTarget);
 
 	UWorld* world = GetWorld();

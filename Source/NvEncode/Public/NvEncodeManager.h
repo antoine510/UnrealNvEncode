@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CoreMinimal.h>
+#include <Engine/TextureRenderTarget2D.h>
 #include <Components/ActorComponent.h>
 #include "BP/USBGCometBP.h"
 #include "BP/USBGNebulaBP.h"
@@ -20,7 +21,7 @@ public:
 	void BeginDestroy() override;
 
 	UFUNCTION(BlueprintCallable)
-		void Startup(int width, int height);
+		void Startup(int width, int height, ETextureRenderTargetFormat format);
 
 	UFUNCTION(BlueprintCallable)
 		void SetVideoSource(UNvVideoSource* source);
